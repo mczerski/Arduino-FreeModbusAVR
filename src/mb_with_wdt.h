@@ -14,10 +14,7 @@ extern MBFile fileTable[];
 
 eMBErrorCode eMBInitWithWDT(
     eMBMode eMode,
-    UCHAR ucSlaveAddress,
     UCHAR ucPort,
-    ULONG ulBaudRate,
-    eMBParity eParity,
     UCHAR ucWdtValue,
     UCHAR ucVersionMajor,
     UCHAR ucVersionMinor);

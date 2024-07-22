@@ -1,5 +1,7 @@
 #include "mb_with_wdt.h"
+#include "led.h"
 #include "SPIFlash.h"
+#include <avr/eeprom.h>
 
 SPIFlash flash(8, 0x1F65);
 
@@ -14,23 +16,38 @@ MBFile fileTable[] = {
 };
 static UCHAR versionMajor = 0;
 static UCHAR versionMinor = 0;
+static ULONG baudrateTable[16] = {
+    2400, 4800, 9600, 14400, 19200, 28800, 38400, 57600, 76800, 115200, 230400, 250000, 460800, 500000, 921600, 1000000
+};
 
 eMBErrorCode eMBInitWithWDT(
     eMBMode eMode,
-    UCHAR ucSlaveAddress,
     UCHAR ucPort,
-    ULONG ulBaudRate,
-    eMBParity eParity,
     UCHAR ucWdtValue,
     UCHAR ucVersionMajor,
     UCHAR ucVersionMinor)
 {
     versionMajor = ucVersionMajor;
     versionMinor = ucVersionMinor;
+    UCHAR ucSlaveAddress = 1;
+    ULONG ulBaudRate = 9600;
+    eMBParity eParity = MB_PAR_EVEN;
+    uint16_t config = (eeprom_read_byte(0) << 8) | eeprom_read_byte(1);
+    if (config != 0xffff) {
+        ucSlaveAddress = config & 0xff;
+        ulBaudRate = baudrateTable[(config >> 8) & 0xf];
+        eParity = (config >> 12) & 0x3;
+    }
+    init_led();
     wdt_enable(ucWdtValue);
     if (!flash.initialize())
-        return MB_EIO;
-    return eMBInit(eMode, ucSlaveAddress, ucPort, ulBaudRate, eParity);
+        error(MB_EIO);
+    eMBErrorCode status = eMBInit(eMode, ucSlaveAddress, ucPort, ulBaudRate, eParity);
+    if (status != MB_ENOERR) error(status);
+    status = eMBEnable();
+    if (status != MB_ENOERR) error(status);
+    trigger_led();
+    return;
 }
 
 eMBErrorCode eMBPollWithWDT()
@@ -38,6 +55,7 @@ eMBErrorCode eMBPollWithWDT()
     if (!resetMCU)
         wdt_reset();
     eMBPoll();
+    update_led();
 }
 
 eMBErrorCode eMBRegFileCB(UCHAR * pucFileBuffer, USHORT usFileNumber, USHORT usRecordNumber, USHORT usRecordLength, eMBRegisterMode eMode) {
@@ -72,4 +90,26 @@ eMBErrorCode eMBRegFileCB(UCHAR * pucFileBuffer, USHORT usFileNumber, USHORT usR
     }
   }
   return MB_ENOREG;
+}
+
+extern eMBErrorCode eMBRegHoldingCB2(UCHAR * pucRegBuffer, USHORT usAddress, USHORT usNRegs, eMBRegisterMode eMode);
+
+eMBErrorCode eMBRegHoldingCB(UCHAR * pucRegBuffer, USHORT usAddress, USHORT usNRegs, eMBRegisterMode eMode) {
+  if (eMode == MB_REG_READ and usAddress == 100 and usNRegs == 1) {
+    pucRegBuffer[0] = eeprom_read_byte(0);
+    pucRegBuffer[1] = eeprom_read_byte(1);
+    return MB_ENOERR;
+  }
+  if (eMode == MB_REG_WRITE and usAddress == 100 and usNRegs == 1) {
+    if (0xfe >= pucRegBuffer[1] & 0xff >= 1 and (pucRegBuffer[0] >> 12) <= 3) {
+      eeprom_write_byte(0, pucRegBuffer[0]);
+      eeprom_write_byte(1, pucRegBuffer[1]);
+      resetMCU = TRUE;
+      return MB_ENOERR;
+    }
+    else {
+      return MB_EINVAL;
+    }
+  }
+  return eMBRegHoldingCB2(pucRegBuffer, usAddress, usNRegs, eMode);
 }
