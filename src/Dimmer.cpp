@@ -176,7 +176,7 @@ bool Dimmer::update(bool value)
       return true;
     }
     else if (isLongPress() and functions_.fullBrightness) {
-      request(255);
+      request_(255);
     }
     else if (functions_.slowDimming or functions_.fullBrightness) {
       set(state_ == OFF or state_ == DIMMING_DOWN);
@@ -186,7 +186,7 @@ bool Dimmer::update(bool value)
   return updateLevel_();
 }
 
-void Dimmer::request(uint8_t value)
+void Dimmer::request_(uint8_t value)
 {
   if (isInSlowDimming_() or value == currentLevel_) {
     return;
@@ -204,16 +204,20 @@ void Dimmer::request(uint8_t value)
 void Dimmer::set(bool on)
 {
   if (on) {
-    request(lastLevel_ ? lastLevel_ : 255);
+    request_(lastLevel_ ? lastLevel_ : 255);
   }
   else {
-    request(0);
+    request_(0);
   }
 }
 
-uint8_t Dimmer::getLevel()
+void Dimmer::setPercent(uint8_t percent) {
+    request_(round(255.0*percent/100));
+}
+
+uint8_t Dimmer::getPercent()
 {
-  return currentLevel_;
+  return round(100.0*requestedLevel_/255);
 }
 
 } //mys_toolkit

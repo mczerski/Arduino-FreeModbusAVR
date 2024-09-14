@@ -33,6 +33,7 @@ class Dimmer {
 
   Duration fadeDelay_();
   virtual void setLevel_(uint8_t level) = 0;
+  void request_(uint8_t value);
   bool updateLevel_();
   void handleDimming_();
   bool isRising_(bool pinValue);
@@ -54,9 +55,9 @@ public:
   virtual ~Dimmer();
   virtual void begin() {};
   bool update(bool value);
-  void request(uint8_t value);
   void set(bool on);
-  uint8_t getLevel();
+  void setPercent(uint8_t percent);
+  uint8_t getPercent();
 };
 
 template <size_t N>
