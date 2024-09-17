@@ -35,6 +35,9 @@ eMBErrorCode eMBInitWithWDT(
     uint16_t config = (eeprom_read_byte(0) << 8) | eeprom_read_byte(1);
     if (config != 0xffff) {
         ucSlaveAddress = config & 0xff;
+        if (ucSlaveAddress == 0) {
+            ucSlaveAddress = 1;
+        }
         ulBaudRate = baudrateTable[(config >> 8) & 0xf];
         eParity = (config >> 12) & 0x3;
     }
