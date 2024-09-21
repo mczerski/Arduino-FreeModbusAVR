@@ -1,3 +1,3 @@
 [submodule "freemodbus"]
 	path = freemodbus
-	url = https://github.com/VolutionGroup/freemodbus.git
+	url = https://github.com/mczerski/freemodbus.git

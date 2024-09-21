@@ -14,7 +14,7 @@ def read_image(image_file):
     return whole_file
 
 
-def write_file(whole_file, file_number):
+def write_file(whole_file, file_number, slave):
     record_number = 0
     while 2 * record_number < len(whole_file):
         record_length = min(64, (len(whole_file) - 2 * record_number) // 2)
@@ -26,7 +26,7 @@ def write_file(whole_file, file_number):
             record_number=record_number,
             record_length=record_length,
         )
-        response = client.write_file_record([file_record], slave=args.slave)
+        response = client.write_file_record([file_record], slave=slave)
         progress = int(100 * 2 * (record_number + record_length + 1) / len(whole_file))
         print(f'{progress: >3}%', end='\r')
         if response.isError():
@@ -35,7 +35,7 @@ def write_file(whole_file, file_number):
         record_number += record_length
 
 
-def verify_file(whole_file, file_number):
+def verify_file(whole_file, file_number, slave):
     record_number = 0
     while 2 * record_number < len(whole_file):
         record_length = min(64, (len(whole_file) - 2 * record_number) // 2)
@@ -46,7 +46,7 @@ def verify_file(whole_file, file_number):
             record_number=record_number,
             record_length=record_length,
         )
-        response = client.read_file_record([file_record], slave=args.slave)
+        response = client.read_file_record([file_record], slave=slave)
         progress = int(100 * 2 * (record_number + record_length + 1) / len(whole_file))
         print(f'{progress: >3}%', end='\r')
         if response.isError():
@@ -58,7 +58,7 @@ def verify_file(whole_file, file_number):
         record_number += record_length
 
 
-def read_file(file_size, file_number):
+def read_file(file_size, file_number, slave):
     if file_size % 2 == 1:
         file_size += 1
     record_number = 0
@@ -71,7 +71,7 @@ def read_file(file_size, file_number):
             record_number=record_number,
             record_length=record_length,
         )
-        response = client.read_file_record([file_record], slave=args.slave)
+        response = client.read_file_record([file_record], slave=slave)
         if response.isError():
             print(f'Error while reading on record {record_number}. {response}')
             sys.exit(1)
@@ -105,30 +105,31 @@ client = ModbusClient.ModbusSerialClient(
 client.connect()
 
 if args.dump_size > 0:
-    whole_file = read_file(args.dump_size, 1)
+    whole_file = read_file(args.dump_size, 1, slave=args.slave)
     with open(args.file, 'wb') as f:
         f.write(whole_file)
-    header = read_file(10, 2)
+    header = read_file(10, 2, slave=args.slave)
     print(header)
     sys.exit(0)
 
 if args.version:
-    version = read_file(2, 3)
-    major = int(version[0])
-    minor = int(version[1])
-    print(f'v{major}.{minor}')
+    response = client.report_slave_id(slave=args.slave)
+    slave_id = str(int(response.identifier[0]))
+    version = response.identifier[2:].decode()
+    print('ID: ' + slave_id)
+    print('Version: ' + version)
     sys.exit(0)
 
 whole_file = read_image(args.file)
 
 print('Writing image file')
-write_file(whole_file, file_number=1)
+write_file(whole_file, file_number=1, slave=args.slave)
 print('Veryfing image file')
-verify_file(whole_file, file_number=1)
+verify_file(whole_file, file_number=1, slave=args.slave)
 
 image_header = make_image_header(whole_file)
 print('Writing image header')
-write_file(image_header, file_number=2)
+write_file(image_header, file_number=2, slave=args.slave)
 #print('Verifying image header')
 #verify_file(image_header, file_number=2)
 print('Success')

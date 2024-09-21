@@ -8,14 +8,11 @@ SPIFlash flash(8, 0x1F65);
 BOOL resetMCU = FALSE;
 const USHORT MB_FILE_IMAGE = 1;
 const USHORT MB_FILE_HEADER = 2;
-const USHORT MB_FILE_VERSION = 3;
 MBFile fileTable[] = {
     {.fileNumber = MB_FILE_IMAGE, .fileSize = 32*1024 - 10, .fileOffset = 10},
     {.fileNumber = MB_FILE_HEADER, .fileSize = 10, .fileOffset = 0},
     {.fileNumber = 0, .fileSize = 0, .fileOffset = 0}
 };
-static UCHAR versionMajor = 0;
-static UCHAR versionMinor = 0;
 static ULONG baudrateTable[16] = {
     2400, 4800, 9600, 14400, 19200, 28800, 38400, 57600, 76800, 115200, 230400, 250000, 460800, 500000, 921600, 1000000
 };
@@ -24,11 +21,10 @@ eMBErrorCode eMBInitWithWDT(
     eMBMode eMode,
     UCHAR ucPort,
     UCHAR ucWdtValue,
-    UCHAR ucVersionMajor,
-    UCHAR ucVersionMinor)
+    UCHAR ucSlaveID,
+    UCHAR const * pucAdditional,
+    USHORT usAdditionalLen)
 {
-    versionMajor = ucVersionMajor;
-    versionMinor = ucVersionMinor;
     UCHAR ucSlaveAddress = 1;
     ULONG ulBaudRate = 9600;
     eMBParity eParity = MB_PAR_EVEN;
@@ -46,6 +42,8 @@ eMBErrorCode eMBInitWithWDT(
     if (!flash.initialize())
         error(MB_EIO);
     eMBErrorCode status = eMBInit(eMode, ucSlaveAddress, ucPort, ulBaudRate, eParity);
+    if (status != MB_ENOERR) error(status);
+    status = eMBSetSlaveID(ucSlaveID, true, pucAdditional, usAdditionalLen);
     if (status != MB_ENOERR) error(status);
     status = eMBEnable();
     if (status != MB_ENOERR) error(status);
@@ -80,11 +78,6 @@ eMBErrorCode eMBRegFileCB(UCHAR * pucFileBuffer, USHORT usFileNumber, USHORT usR
     }
   }
   else if (eMode == MB_REG_READ) {
-    if (usFileNumber == MB_FILE_VERSION && usRecordNumber == 0 && usRecordLength == 1) {
-        pucFileBuffer[0] = versionMajor;
-        pucFileBuffer[1] = versionMinor;
-        return MB_ENOERR;
-    }
     for (const MBFile *mbFile = fileTable; mbFile->fileNumber != 0; mbFile++) {
         if (mbFile->fileNumber == usFileNumber && mbFile->fileSize >= 2 * (usRecordNumber + usRecordLength)) {
             flash.readBytes(mbFile->fileOffset + 2 * usRecordNumber, pucFileBuffer, 2 * usRecordLength);

@@ -95,7 +95,7 @@ PR_BEGIN_EXTERN_C
 #define MB_FUNC_OTHER_REP_SLAVEID_BUF           ( 32 )
 
 /*! \brief If the <em>Report Slave ID</em> function should be enabled. */
-#define MB_FUNC_OTHER_REP_SLAVEID_ENABLED       (  0 )
+#define MB_FUNC_OTHER_REP_SLAVEID_ENABLED       (  1 )
 
 /*! \brief If the <em>Read Input Registers</em> function should be enabled. */
 #define MB_FUNC_READ_INPUT_ENABLED              (  1 )

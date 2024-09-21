@@ -16,8 +16,9 @@ eMBErrorCode eMBInitWithWDT(
     eMBMode eMode,
     UCHAR ucPort,
     UCHAR ucWdtValue,
-    UCHAR ucVersionMajor,
-    UCHAR ucVersionMinor);
+    UCHAR ucSlaveID,
+    UCHAR const * pucAdditional,
+    USHORT usAdditionalLen);
 eMBErrorCode eMBPollWithWDT();
 
 #endif
