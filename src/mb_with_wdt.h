@@ -2,6 +2,7 @@
 #define _MB_WITH_WDT_H
 
 #include "mb.h"
+#include "SPIFlash.h"
 #include <avr/wdt.h>
 
 typedef struct {
@@ -18,7 +19,8 @@ eMBErrorCode eMBInitWithWDT(
     UCHAR ucWdtValue,
     UCHAR ucSlaveID,
     UCHAR const * pucAdditional,
-    USHORT usAdditionalLen);
+    USHORT usAdditionalLen,
+    SPIFlash * flash = nullptr);
 eMBErrorCode eMBPollWithWDT();
 
 #endif

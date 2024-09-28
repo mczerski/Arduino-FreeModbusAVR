@@ -3,7 +3,7 @@
 #include "SPIFlash.h"
 #include <avr/eeprom.h>
 
-SPIFlash flash(8, 0x1F65);
+static SPIFlash *flash_ = nullptr;
 
 BOOL resetMCU = FALSE;
 const USHORT MB_FILE_IMAGE = 1;
@@ -23,7 +23,8 @@ eMBErrorCode eMBInitWithWDT(
     UCHAR ucWdtValue,
     UCHAR ucSlaveID,
     UCHAR const * pucAdditional,
-    USHORT usAdditionalLen)
+    USHORT usAdditionalLen,
+    SPIFlash *flash)
 {
     UCHAR ucSlaveAddress = 1;
     ULONG ulBaudRate = 9600;
@@ -39,7 +40,8 @@ eMBErrorCode eMBInitWithWDT(
     }
     init_led();
     wdt_enable(ucWdtValue);
-    if (!flash.initialize())
+    flash_ = flash;
+    if (flash_ and !flash_->initialize())
         error(MB_EIO);
     eMBErrorCode status = eMBInit(eMode, ucSlaveAddress, ucPort, ulBaudRate, eParity);
     if (status != MB_ENOERR) error(status);
@@ -60,15 +62,15 @@ eMBErrorCode eMBPollWithWDT()
 }
 
 eMBErrorCode eMBRegFileCB(UCHAR * pucFileBuffer, USHORT usFileNumber, USHORT usRecordNumber, USHORT usRecordLength, eMBRegisterMode eMode) {
-  if (eMode == MB_REG_WRITE) {
+  if (flash_ and eMode == MB_REG_WRITE) {
     for (const MBFile *mbFile = fileTable; mbFile->fileNumber != 0; mbFile++) {
         if (mbFile->fileNumber == usFileNumber && mbFile->fileSize >= 2 * (usRecordNumber + usRecordLength)) {
             if (usFileNumber == MB_FILE_IMAGE && usRecordNumber == 0) {
-                flash.blockErase32K(0);
-                while (flash.busy());
+                flash_->blockErase32K(0);
+                while (flash_->busy());
             }
-            flash.writeBytes(mbFile->fileOffset + 2 * usRecordNumber, pucFileBuffer, 2 * usRecordLength);
-            while (flash.busy());
+            flash_->writeBytes(mbFile->fileOffset + 2 * usRecordNumber, pucFileBuffer, 2 * usRecordLength);
+            while (flash_->busy());
             // reset MCU by not reseting watchdog timer
             if (usFileNumber == MB_FILE_HEADER && usRecordNumber == 0 and mbFile->fileSize == 2 *usRecordLength) {
                 resetMCU = TRUE;
@@ -77,10 +79,10 @@ eMBErrorCode eMBRegFileCB(UCHAR * pucFileBuffer, USHORT usFileNumber, USHORT usR
         }
     }
   }
-  else if (eMode == MB_REG_READ) {
+  else if (flash_ and eMode == MB_REG_READ) {
     for (const MBFile *mbFile = fileTable; mbFile->fileNumber != 0; mbFile++) {
         if (mbFile->fileNumber == usFileNumber && mbFile->fileSize >= 2 * (usRecordNumber + usRecordLength)) {
-            flash.readBytes(mbFile->fileOffset + 2 * usRecordNumber, pucFileBuffer, 2 * usRecordLength);
+            flash_->readBytes(mbFile->fileOffset + 2 * usRecordNumber, pucFileBuffer, 2 * usRecordLength);
             return MB_ENOERR;
         }
     }
