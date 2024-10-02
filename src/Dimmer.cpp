@@ -1,4 +1,5 @@
 #include "Dimmer.h"
+#include <Arduino.h>
 
 namespace mys_toolkit {
 
