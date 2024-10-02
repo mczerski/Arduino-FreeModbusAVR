@@ -24,7 +24,8 @@ eMBErrorCode eMBInitWithWDT(
     UCHAR ucSlaveID,
     UCHAR const * pucAdditional,
     USHORT usAdditionalLen,
-    SPIFlash *flash)
+    SPIFlash *flash,
+    int led_pin)
 {
     UCHAR ucSlaveAddress = 1;
     ULONG ulBaudRate = 9600;
@@ -38,7 +39,7 @@ eMBErrorCode eMBInitWithWDT(
         ulBaudRate = baudrateTable[(config >> 8) & 0xf];
         eParity = (config >> 12) & 0x3;
     }
-    init_led();
+    init_led(led_pin);
     wdt_enable(ucWdtValue);
     flash_ = flash;
     if (flash_ and !flash_->initialize())

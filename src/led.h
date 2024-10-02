@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-void init_led();
+void init_led(int pin);
 void trigger_led();
 void update_led();
 void error(eMBErrorCode code);

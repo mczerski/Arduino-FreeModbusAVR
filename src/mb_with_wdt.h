@@ -20,7 +20,8 @@ eMBErrorCode eMBInitWithWDT(
     UCHAR ucSlaveID,
     UCHAR const * pucAdditional,
     USHORT usAdditionalLen,
-    SPIFlash * flash = nullptr);
+    SPIFlash * flash = nullptr,
+    int led_pin = -1);
 eMBErrorCode eMBPollWithWDT();
 
 #endif
