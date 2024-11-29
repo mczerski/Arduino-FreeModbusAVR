@@ -49,9 +49,19 @@ bool Duration::operator<(const Duration &other)
   return difference >= ULONG_MAX/2;
 }
 
+bool Duration::operator>(const Duration &other)
+{
+  return other < *this;
+}
+
 bool Duration::operator<=(const Duration &other)
 {
   return this->duration_ == other.duration_ or *this < other;
+}
+
+bool Duration::operator>=(const Duration &other)
+{
+  return other <= *this;
 }
 
 void Duration::operator+=(const Duration &other)
