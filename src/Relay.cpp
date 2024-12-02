@@ -4,35 +4,43 @@
 
 namespace mys_toolkit {
 
-bool Relay::isRising_(bool swState)
-{
-  return swState == true and prevSwState_ == false;
-}
+Relay::Relay(Duration minStateDuration)
+  : minStateDuration_(minStateDuration),
+    nextStateChange_(Duration() + minStateDuration)
+{}
 
 bool Relay::getState()
 {
   return state_;
 }
 
-bool Relay::update(bool currSwState)
+void Relay::update(bool currSwState)
 {
-  bool retVal = false;
   if (isRising_(currSwState)) {
-    state_ = not state_;
-    retVal = true;
-    updateState_(state_);
+    requestedState_ = not requestedState_;
   }
-  else {
-    update_();
-  }
+  handleState_();
+  update_();
   prevSwState_ = currSwState;
-  return retVal;
+}
+
+bool Relay::isRising_(bool swState)
+{
+  return swState == true and prevSwState_ == false;
+}
+
+void Relay::handleState_() {
+  if (requestedState_ != state_ and Duration() >= nextStateChange_) {
+      state_ = requestedState_;
+      updateState_(state_);
+      nextStateChange_ = Duration() + minStateDuration_;
+  }
 }
 
 void Relay::set(bool state)
 {
-  state_ = state;
-  updateState_(state_);
+  requestedState_ = state;
+  handleState_();
 }
 
 
@@ -41,11 +49,11 @@ void GPIORelay::updateState_(bool state)
   digitalWrite(relayPin_, !state);
 }
 
-GPIORelay::GPIORelay(int relayPin)
-  : relayPin_(relayPin)
+GPIORelay::GPIORelay(int relayPin, Duration minStateDuration)
+  : Relay(minStateDuration),
+    relayPin_(relayPin)
 {
   pinMode(relayPin_, OUTPUT);
-  updateState_(getState());
 }
 
 } //mys_toolkit
