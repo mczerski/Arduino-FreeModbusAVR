@@ -55,8 +55,11 @@ void BL0942::writeReg_(byte address, uint32_t data) {
   serial_.write(checksum);
 }
 
-BL0942::BL0942(Stream &serial)
-  : serial_(serial) {
+BL0942::BL0942(Stream &serial, float i_gain, float v_gain)
+  : serial_(serial),
+    i_gain_(i_gain),
+    v_gain_(v_gain)
+{
 }
 
 void BL0942::begin() {
@@ -98,10 +101,11 @@ bool BL0942::update() {
     if (not readPacket_()) {
       return false;
     }
-    i_rms_mA_ = round(packet_buffer_.i_rms * I_COEFF);
-    v_rms_mV_ = round(packet_buffer_.v_rms * V_COEFF);
-    p_rms_mW_ = round(packet_buffer_.watt * P_COEFF);
-    e_mWh_ = round(packet_buffer_.cf_cnt * E_COEFF);
+    double p_gain = i_gain_ * v_gain_;
+    i_rms_mA_ = round(packet_buffer_.i_rms * I_COEFF / i_gain_);
+    v_rms_mV_ = round(packet_buffer_.v_rms * V_COEFF / v_gain_);
+    p_rms_mW_ = round(packet_buffer_.watt * P_COEFF / p_gain);
+    e_mWh_ = round(packet_buffer_.cf_cnt * E_COEFF / p_gain);
   }
   else {
     if (not readReg_(last_read_cmd_)) {
@@ -151,4 +155,9 @@ int32_t BL0942::getIFastRmsTh_mA() const {
 
 byte BL0942::getCfOutput() const {
   return cf_output_;
+}
+
+void BL0942::calibrate(float i_gain, float v_gain) {
+    i_gain_ = i_gain;
+    v_gain_ = v_gain;
 }

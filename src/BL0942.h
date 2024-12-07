@@ -32,7 +32,7 @@ class BL0942 {
   static constexpr byte OT_FUNX  = 0x18;
   static constexpr byte USR_WRPROT = 0x1D;
   static constexpr double V_REF = 1.218;
-  static constexpr double I_R = 0.001 * 9500/8520;
+  static constexpr double I_R = 0.001;
   static constexpr double I_COEFF = V_REF / 305978 / I_R;
   static constexpr double I_FAST_COEFF = I_COEFF / 0.363;
   static constexpr double V_DIV_R1 = 510;
@@ -50,6 +50,8 @@ class BL0942 {
   byte cf_output_ = 0;
   byte last_read_cmd_ = FULL_PACKET;
   mys_toolkit::Duration last_read_timestamp_{0};
+  float i_gain_ = 1.0;
+  float v_gain_ = 1.0;
   bool readPacket_();
   bool readReg_(byte reg);
   void readCmd_(byte reg);
@@ -58,7 +60,7 @@ class BL0942 {
 public:
   DataPacket packet_buffer_;
   DataReg reg_buffer_;
-  BL0942(Stream &serial);
+  BL0942(Stream &serial, float i_gain = 1.0, float v_gain = 1.0);
   void begin();
   bool update();
   int32_t getIRms_mA() const;
@@ -67,6 +69,7 @@ public:
   uint32_t getE_mWh() const;
   int32_t getIFastRmsTh_mA() const;
   byte getCfOutput() const;
+  void calibrate(float i_gain = 1.0, float v_gain = 1.0);
 };
 
 #endif //BL0942_h
