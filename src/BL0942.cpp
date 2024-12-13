@@ -158,6 +158,6 @@ byte BL0942::getCfOutput() const {
 }
 
 void BL0942::calibrate(float i_gain, float v_gain) {
-    i_gain_ = i_gain;
-    v_gain_ = v_gain;
+    i_gain_ = isnan(i_gain) ? 1.0 : i_gain;
+    v_gain_ = isnan(v_gain) ? 1.0 : v_gain;
 }

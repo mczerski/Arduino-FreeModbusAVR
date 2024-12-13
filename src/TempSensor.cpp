@@ -40,8 +40,8 @@ int16_t TempSensor::getTemp()
 
 void TempSensor::calibrate(int temp_offset, float temp_gain)
 {
-  temp_offset_ = temp_offset;
-  temp_gain_ = temp_gain;
+  temp_offset_ = temp_offset == -1 ? 245 : temp_offset;
+  temp_gain_  = isnan(temp_gain) ? 1.0 : temp_gain;
 }
 
 } // mys_toolkit
