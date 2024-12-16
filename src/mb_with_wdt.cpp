@@ -1,7 +1,7 @@
 #include "mb_with_wdt.h"
 #include "led.h"
 #include "SPIFlash.h"
-#include <avr/eeprom.h>
+#include <EEPROM.h>
 
 static SPIFlash *flash_ = nullptr;
 
@@ -30,7 +30,7 @@ eMBErrorCode eMBInitWithWDT(
     UCHAR ucSlaveAddress = 1;
     ULONG ulBaudRate = 9600;
     eMBParity eParity = MB_PAR_EVEN;
-    uint16_t config = (eeprom_read_byte(0) << 8) | eeprom_read_byte(1);
+    uint16_t config = (EEPROM.read(0) << 8) | EEPROM.read(1);
     if (config != 0xffff) {
         ucSlaveAddress = config & 0xff;
         if (ucSlaveAddress == 0) {
@@ -95,14 +95,14 @@ extern eMBErrorCode eMBRegHoldingCB2(UCHAR * pucRegBuffer, USHORT usAddress, USH
 
 eMBErrorCode eMBRegHoldingCB(UCHAR * pucRegBuffer, USHORT usAddress, USHORT usNRegs, eMBRegisterMode eMode) {
   if (eMode == MB_REG_READ and usAddress == 100 and usNRegs == 1) {
-    pucRegBuffer[0] = eeprom_read_byte(0);
-    pucRegBuffer[1] = eeprom_read_byte(1);
+    pucRegBuffer[0] = EEPROM.read(0);
+    pucRegBuffer[1] = EEPROM.read(1);
     return MB_ENOERR;
   }
   if (eMode == MB_REG_WRITE and usAddress == 100 and usNRegs == 1) {
     if (0xfe >= pucRegBuffer[1] & 0xff >= 1 and (pucRegBuffer[0] >> 12) <= 3) {
-      eeprom_write_byte(0, pucRegBuffer[0]);
-      eeprom_write_byte(1, pucRegBuffer[1]);
+      EEPROM.write(0, pucRegBuffer[0]);
+      EEPROM.write(1, pucRegBuffer[1]);
       resetMCU = TRUE;
       return MB_ENOERR;
     }
