@@ -91,7 +91,7 @@ eMBErrorCode eMBRegFileCB(UCHAR * pucFileBuffer, USHORT usFileNumber, USHORT usR
   return MB_ENOREG;
 }
 
-extern eMBErrorCode eMBRegHoldingCB2(UCHAR * pucRegBuffer, USHORT usAddress, USHORT usNRegs, eMBRegisterMode eMode);
+extern eMBErrorCode eMBRegHoldingCB(USHORT * pucRegBuffer, USHORT usAddress, USHORT usNRegs, eMBRegisterMode eMode);
 
 eMBErrorCode eMBRegHoldingCB(UCHAR * pucRegBuffer, USHORT usAddress, USHORT usNRegs, eMBRegisterMode eMode) {
   if (eMode == MB_REG_READ and usAddress == 100 and usNRegs == 1) {
@@ -110,5 +110,5 @@ eMBErrorCode eMBRegHoldingCB(UCHAR * pucRegBuffer, USHORT usAddress, USHORT usNR
       return MB_EINVAL;
     }
   }
-  return eMBRegHoldingCB2(pucRegBuffer, usAddress, usNRegs, eMode);
+  return eMBRegHoldingCB(reinterpret_cast<USHORT*>(pucRegBuffer), usAddress, usNRegs, eMode);
 }

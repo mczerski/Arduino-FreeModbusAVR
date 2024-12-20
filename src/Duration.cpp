@@ -33,7 +33,7 @@ Duration::Duration()
 {
 }
 
-Duration::duration_ms_t Duration::getMilis() const
+Duration::duration_ms_t Duration::getMillis() const
 {
   return duration_ * prescaler_.multiply / prescaler_.divide;
 }

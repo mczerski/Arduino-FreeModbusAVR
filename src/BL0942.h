@@ -23,6 +23,18 @@ struct DataReg {
   uint8_t checksum;
 } __attribute__((packed)) __attribute__((scalar_storage_order("little-endian")));
 
+class EnergyStore {
+  uint32_t base_cf_cnt_stored_ = 0;
+  uint32_t base_cf_cnt_received_ = 0;
+  int eeprom_addr_;
+  bool init_done_ = false;
+  mys_toolkit::Duration last_store_timestamp_;
+public:
+  EnergyStore(int eeprom_addr);
+  uint32_t update(uint32_t cf_cnt);
+  void set(uint32_t cf_cnt);
+};
+
 class BL0942 {
   static constexpr byte WRITE_COMMAND = 0xA8;
   static constexpr byte READ_COMMAND = 0x58;
@@ -50,6 +62,7 @@ class BL0942 {
   byte cf_output_ = 0;
   byte last_read_cmd_ = FULL_PACKET;
   mys_toolkit::Duration last_read_timestamp_{0};
+  EnergyStore energy_store_;
   float i_gain_ = 1.0;
   float v_gain_ = 1.0;
   bool readPacket_();
@@ -60,7 +73,7 @@ class BL0942 {
 public:
   DataPacket packet_buffer_;
   DataReg reg_buffer_;
-  BL0942(Stream &serial, float i_gain = 1.0, float v_gain = 1.0);
+  BL0942(Stream &serial, int eeprom_addr, float i_gain = 1.0, float v_gain = 1.0);
   void begin();
   bool update();
   int32_t getIRms_mA() const;
@@ -70,6 +83,7 @@ public:
   int32_t getIFastRmsTh_mA() const;
   byte getCfOutput() const;
   void calibrate(float i_gain = 1.0, float v_gain = 1.0);
+  void set_energy(uint32_t e_mW);
 };
 
 #endif //BL0942_h

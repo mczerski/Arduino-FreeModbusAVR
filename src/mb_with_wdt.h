@@ -34,7 +34,7 @@ union ModbusDataBlock {
 template <typename S>
 eMBErrorCode eMBCopyToRegBuffer(const ModbusDataBlock<S> & dataBlock, UCHAR * pucRegBuffer, USHORT usAddress, USHORT usNRegs)
 {
-  if (usAddress >= 1 and usAddress + usNRegs <= ModbusDataBlock<S>::mbLength) {
+  if (usAddress >= 1 and usAddress + usNRegs <= ModbusDataBlock<S>::mbLength + 1) {
     uint16_t * buf = reinterpret_cast<uint16_t*>(pucRegBuffer);
     for (size_t i=0; i<usNRegs; i++) {
       buf[i] = __builtin_bswap16(dataBlock.data[i + usAddress - 1]);

@@ -19,7 +19,7 @@ public:
   typedef unsigned long duration_ms_t;
   explicit Duration(duration_ms_t duration);
   explicit Duration();
-  duration_ms_t getMilis() const;
+  duration_ms_t getMillis() const;
   duration_ms_t get() const;
   bool operator<(const Duration &other);
   bool operator>(const Duration &other);

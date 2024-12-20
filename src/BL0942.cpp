@@ -1,6 +1,88 @@
 #include "BL0942.h"
+#include <EEPROM.h>
 
 using namespace mys_toolkit;
+
+namespace {
+  template <typename T>
+  int eeprom_get_max_(int address, int range, T &max_value) {
+    T v;
+    EEPROM.get(address, v);
+    max_value = v;
+    int max_idx = 0;
+    for (int i = 1; i < range; i++) {
+      EEPROM.get(address + i * sizeof(T), v);
+      if (v > max_value) {
+        max_value = v;
+        max_idx = i;
+      }
+    }
+    return max_idx;
+  }
+
+  template <typename T>
+  void eeprom_get_range(int address, int range, T &value) {
+      eeprom_get_max_(address, range, value);
+  }
+
+  template <typename T>
+  void eeprom_put_range(int address, int range, T value) {
+    T v;
+    int max_idx = eeprom_get_max_(address, range, v);
+    if (v != value) {
+      EEPROM.put(address + ((max_idx + 1) % range) * sizeof(T), value);
+    }
+  }
+  
+  template <typename T>
+  void eeprom_init_range(int address, int range, T value) {
+    for (int i = 0; i < range; i++) {
+      EEPROM.put(address + i * sizeof(T), value);
+    }
+  }
+}
+
+EnergyStore::EnergyStore(int eeprom_addr)
+  : eeprom_addr_(eeprom_addr)
+{
+}
+
+uint32_t EnergyStore::update(uint32_t cf_cnt) {
+  // cf_cnt is actuallly 24 bit long
+  if (not init_done_) {
+    // initialize eeprom stored cf_cnt (happens after MCU restart)
+    eeprom_get_range(eeprom_addr_, 24, base_cf_cnt_stored_);
+    // if cf_cnt is not stored in eeprom initialize it with 0
+    if (base_cf_cnt_stored_ == 0xffffffff) {
+      base_cf_cnt_stored_ = 0;
+      eeprom_init_range(eeprom_addr_, 24, base_cf_cnt_stored_);
+    }
+    // initialize received cf_cnt base with first received value (happens after MCU restart)
+    base_cf_cnt_received_ = cf_cnt;
+    init_done_ = true;
+  }
+  // handle cf_cnt rollover or BL0942 restart (not likely to happen)
+  if (base_cf_cnt_received_ > cf_cnt) {
+    base_cf_cnt_stored_ = base_cf_cnt_stored_ + base_cf_cnt_received_ + cf_cnt;
+    base_cf_cnt_received_ = cf_cnt;
+    eeprom_put_range(eeprom_addr_, 24, base_cf_cnt_stored_);
+    last_store_timestamp_ = Duration();
+  }
+  uint32_t updated_cf_cnt = cf_cnt - base_cf_cnt_received_ + base_cf_cnt_stored_;
+  // store cf_cnt once every hour
+  if (Duration() >= last_store_timestamp_ + Duration(60 * 60 * 1000ul)) {
+    eeprom_put_range(eeprom_addr_, 24, updated_cf_cnt);
+    base_cf_cnt_stored_ = updated_cf_cnt;
+    base_cf_cnt_received_ = cf_cnt;
+    last_store_timestamp_ = Duration();
+  }
+  return updated_cf_cnt;
+}
+
+void EnergyStore::set(uint32_t cf_cnt) {
+  eeprom_init_range(eeprom_addr_, 24, cf_cnt);
+  init_done_ = false;
+}
 
 bool BL0942::readPacket_() {
   serial_.readBytes(reinterpret_cast<byte*>(&packet_buffer_), sizeof(packet_buffer_));
@@ -55,10 +137,11 @@ void BL0942::writeReg_(byte address, uint32_t data) {
   serial_.write(checksum);
 }
 
-BL0942::BL0942(Stream &serial, float i_gain, float v_gain)
+BL0942::BL0942(Stream &serial, int eeprom_addr, float i_gain, float v_gain)
   : serial_(serial),
     i_gain_(i_gain),
-    v_gain_(v_gain)
+    v_gain_(v_gain),
+    energy_store_(eeprom_addr)
 {
 }
 
@@ -84,7 +167,7 @@ bool BL0942::update() {
   }
   byte bytes_to_read = last_read_cmd_ == FULL_PACKET ? sizeof(packet_buffer_) + 1 : sizeof(reg_buffer_);
   if (serial_.available() <  bytes_to_read) {
-    // chek for timout
+    // chek for timoute
     if (Duration() >= last_read_timestamp_ + Duration(100)) {
       last_read_timestamp_ = Duration(0);
       while (serial_.available()) {serial_.read();}
@@ -105,7 +188,8 @@ bool BL0942::update() {
     i_rms_mA_ = round(packet_buffer_.i_rms * I_COEFF / i_gain_);
     v_rms_mV_ = round(packet_buffer_.v_rms * V_COEFF / v_gain_);
     p_rms_mW_ = round(packet_buffer_.watt * P_COEFF / p_gain);
-    e_mWh_ = round(packet_buffer_.cf_cnt * E_COEFF / p_gain);
+    // rounding to uint32_t is broken
+    e_mWh_ = energy_store_.update(packet_buffer_.cf_cnt) * E_COEFF / p_gain;
   }
   else {
     if (not readReg_(last_read_cmd_)) {
@@ -158,6 +242,11 @@ byte BL0942::getCfOutput() const {
 }
 
 void BL0942::calibrate(float i_gain, float v_gain) {
-    i_gain_ = isnan(i_gain) ? 1.0 : i_gain;
-    v_gain_ = isnan(v_gain) ? 1.0 : v_gain;
+  i_gain_ = isnan(i_gain) ? 1.0 : i_gain;
+  v_gain_ = isnan(v_gain) ? 1.0 : v_gain;
+}
+
+void BL0942::set_energy(uint32_t e_mW) {
+  double p_gain = i_gain_ * v_gain_;
+  energy_store_.set(round(e_mW * p_gain / E_COEFF));
 }
