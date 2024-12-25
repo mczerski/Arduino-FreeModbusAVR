@@ -146,6 +146,9 @@ BL0942::BL0942(Stream &serial, int eeprom_addr, float i_gain, float v_gain)
 }
 
 void BL0942::begin() {
+    writeReg_(USR_WRPROT, 0x55);  // unlock
+    writeReg_(SOFT_RESET, 0x5a5a5a);
+    writeReg_(USR_WRPROT, 0); // lock
     readCmd_(FULL_PACKET);
 }
 
@@ -185,9 +188,12 @@ bool BL0942::update() {
       return false;
     }
     double p_gain = i_gain_ * v_gain_;
-    i_rms_mA_ = round(packet_buffer_.i_rms * I_COEFF / i_gain_);
-    v_rms_mV_ = round(packet_buffer_.v_rms * V_COEFF / v_gain_);
-    p_rms_mW_ = round(packet_buffer_.watt * P_COEFF / p_gain);
+    int32_t i_rms_mA = round(packet_buffer_.i_rms * I_COEFF / i_gain_);
+    int32_t v_rms_mV = round(packet_buffer_.v_rms * V_COEFF / v_gain_);
+    int32_t p_rms_mW = round(packet_buffer_.watt * P_COEFF / p_gain);
+    if (abs(i_rms_mA - i_rms_mA_) > 10) i_rms_mA_ = i_rms_mA;
+    if (abs(v_rms_mV - v_rms_mV_) > 1000) v_rms_mV_ = v_rms_mV;
+    if (abs(p_rms_mW - p_rms_mW_) > 500) p_rms_mW_ = p_rms_mW;
     // rounding to uint32_t is broken
     e_mWh_ = energy_store_.update(packet_buffer_.cf_cnt) * E_COEFF / p_gain;
   }

@@ -42,6 +42,7 @@ class BL0942 {
   static constexpr byte PACKET_HEADER = 0x55;
   static constexpr byte I_FAST_RMS_TH = 0x15;
   static constexpr byte OT_FUNX  = 0x18;
+  static constexpr byte SOFT_RESET = 0x1C;
   static constexpr byte USR_WRPROT = 0x1D;
   static constexpr double V_REF = 1.218;
   static constexpr double I_R = 0.001;
