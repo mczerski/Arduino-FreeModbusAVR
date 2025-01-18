@@ -15,7 +15,7 @@ void TempSensor::begin() {
 
 void TempSensor::update() {
   auto temperature = readTemp_();
-  if (abs(temperature - temperature_) > 1) temperature_ = temperature;
+  if (abs(temperature - temperature_) > 2) temperature_ = temperature;
 }
 
 uint16_t TempSensor::readTemp_()
