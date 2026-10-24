@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import sys
 import math
 import argparse
@@ -88,9 +88,9 @@ def make_image_header(whole_file):
 parser = argparse.ArgumentParser(prog='Modbus file uploader')
 parser.add_argument('-d', '--device', help='Path to serial device', required=True)
 parser.add_argument('-b', '--baud', help='Baudrate. Default is 9600', required=False, default=9600, type=int)
-parser.add_argument('-p', '--parity', help='Parity. [E, O, N]. Default is N', required=False, default='N')
+parser.add_argument('-p', '--parity', help='Parity. [E, O, N]. Default is E', required=False, default='E')
 parser.add_argument('-f', '--file', help='File to upload', required=False)
-parser.add_argument('-s', '--slave', help='Modbus slave id', type=int, default=1)
+parser.add_argument('-s', '--slave', help='Modbus slave id. Default is 1', type=int, default=1)
 parser.add_argument('-x', '--dump-size', help='Dump firmware instead of image write', type=int, default=0)
 parser.add_argument('-v', '--version', help='Dump firmware version instead of image write', action='store_true')
 
