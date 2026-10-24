@@ -63,6 +63,7 @@ class BL0942 {
   byte cf_output_ = 0;
   byte last_read_cmd_ = FULL_PACKET;
   mys_toolkit::Duration last_read_timestamp_{0};
+  bool suspended_ = false;
   EnergyStore energy_store_;
   float i_gain_ = 1.0;
   float v_gain_ = 1.0;
@@ -77,6 +78,8 @@ public:
   BL0942(Stream &serial, int eeprom_addr, float i_gain = 1.0, float v_gain = 1.0);
   void begin();
   bool update();
+  void suspend();
+  void resume();
   int32_t getIRms_mA() const;
   int32_t getVRms_mV() const;
   int32_t getPRms_mW() const;

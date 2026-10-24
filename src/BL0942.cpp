@@ -152,7 +152,34 @@ void BL0942::begin() {
     readCmd_(FULL_PACKET);
 }
 
+void BL0942::suspend() {
+  // BL0942 communicats with 4800 bauds, that gives around 2ms per one byte
+  // so 5ms silence means the BL0942 stopped transmitting
+  static const Duration silence_threshold{5};
+  serial_.flush();
+  if (last_read_timestamp_.get()) {
+    int available = serial_.available();
+    Duration last_activity;
+    while (Duration() < last_activity + silence_threshold) {
+      if (serial_.available() != available) {
+        available = serial_.available();
+        last_activity = Duration();
+      }
+    }
+    last_read_timestamp_ = Duration(0);
+  }
+  suspended_ = true;
+}
+
+void BL0942::resume() {
+  while (serial_.available()) {serial_.read();}
+  suspended_ = false;
+}
+
 bool BL0942::update() {
+  if (suspended_) {
+    return false;
+  }
   if (not last_read_timestamp_.get()) {
     // next read request
     switch (last_read_cmd_) {

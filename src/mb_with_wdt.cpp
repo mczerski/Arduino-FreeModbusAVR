@@ -44,6 +44,9 @@ eMBErrorCode eMBInitWithWDT(
     flash_ = flash;
     if (flash_ and !flash_->initialize())
         error(MB_EIO);
+    // After WDT reset the bootloader leaves SPI enabled (SPCR SPE|MSTR) and must be disabled
+    if (flash_)
+        flash_->end();
     eMBErrorCode status = eMBInit(eMode, ucSlaveAddress, ucPort, ulBaudRate, eParity);
     if (status != MB_ENOERR) error(status);
     status = eMBSetSlaveID(ucSlaveID, true, pucAdditional, usAdditionalLen);
@@ -62,10 +65,14 @@ eMBErrorCode eMBPollWithWDT()
     update_led();
 }
 
+__attribute__((weak)) void eMBBeforeFlashAccess() {}
+__attribute__((weak)) void eMBAfterFlashAccess() {}
+
 eMBErrorCode eMBRegFileCB(UCHAR * pucFileBuffer, USHORT usFileNumber, USHORT usRecordNumber, USHORT usRecordLength, eMBRegisterMode eMode) {
   if (flash_ and eMode == MB_REG_WRITE) {
     for (const MBFile *mbFile = fileTable; mbFile->fileNumber != 0; mbFile++) {
         if (mbFile->fileNumber == usFileNumber && mbFile->fileSize >= 2 * (usRecordNumber + usRecordLength)) {
+            eMBBeforeFlashAccess();
             if (usFileNumber == MB_FILE_IMAGE && usRecordNumber == 0) {
                 flash_->blockErase32K(0);
                 while (flash_->busy());
@@ -76,6 +83,9 @@ eMBErrorCode eMBRegFileCB(UCHAR * pucFileBuffer, USHORT usFileNumber, USHORT usR
             if (usFileNumber == MB_FILE_HEADER && usRecordNumber == 0 and mbFile->fileSize == 2 *usRecordLength) {
                 resetMCU = TRUE;
             }
+            // bootloader reads the flash right after reset, so keep devices sharing SPI pins quiet until then
+            if (!resetMCU)
+                eMBAfterFlashAccess();
             return MB_ENOERR;
         }
     }
@@ -83,7 +93,10 @@ eMBErrorCode eMBRegFileCB(UCHAR * pucFileBuffer, USHORT usFileNumber, USHORT usR
   else if (flash_ and eMode == MB_REG_READ) {
     for (const MBFile *mbFile = fileTable; mbFile->fileNumber != 0; mbFile++) {
         if (mbFile->fileNumber == usFileNumber && mbFile->fileSize >= 2 * (usRecordNumber + usRecordLength)) {
+            eMBBeforeFlashAccess();
             flash_->readBytes(mbFile->fileOffset + 2 * usRecordNumber, pucFileBuffer, 2 * usRecordLength);
+            if (!resetMCU)
+                eMBAfterFlashAccess();
             return MB_ENOERR;
         }
     }

@@ -214,6 +214,11 @@ bool SPIFlash::busy()
 	unselect();
 	return status & 1;
 	*/
+	if (readStatus() & 1) return true;
+	// make sure nothing is interferring with the MISO line by checking JEDEC ID (if specified)
+	if (_jedecID == 0) return false;
+	uint16_t idAfter = readDeviceId();
+	if (idAfter != _jedecID) return true;
 	return readStatus() & 1;
 }
 

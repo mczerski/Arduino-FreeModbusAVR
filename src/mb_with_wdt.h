@@ -23,6 +23,8 @@ eMBErrorCode eMBInitWithWDT(
     SPIFlash * flash = nullptr,
     int led_pin = -1);
 eMBErrorCode eMBPollWithWDT();
+void eMBBeforeFlashAccess();
+void eMBAfterFlashAccess();
 
 template <typename S>
 union ModbusDataBlock {
