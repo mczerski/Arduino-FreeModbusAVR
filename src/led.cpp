@@ -26,9 +26,12 @@ void update_led() {
 void error(eMBErrorCode code) {
   while (true) {
     if (led_pin < 0) continue;
-    digitalWrite(led_pin, HIGH);
-    delay(code * 200);
-    digitalWrite(led_pin, LOW);
-    delay(code * 200);
+    for (int i = 0; i < code; i++) {
+        digitalWrite(led_pin, LOW);
+        delay(100);
+        digitalWrite(led_pin, HIGH);
+        delay(100);
+    }
+    delay(1000);
   }
 }

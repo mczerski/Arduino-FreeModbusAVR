@@ -107,12 +107,12 @@ eMBErrorCode eMBRegFileCB(UCHAR * pucFileBuffer, USHORT usFileNumber, USHORT usR
 extern eMBErrorCode eMBRegHoldingCB(USHORT * pucRegBuffer, USHORT usAddress, USHORT usNRegs, eMBRegisterMode eMode);
 
 eMBErrorCode eMBRegHoldingCB(UCHAR * pucRegBuffer, USHORT usAddress, USHORT usNRegs, eMBRegisterMode eMode) {
-  if (eMode == MB_REG_READ and usAddress == 100 and usNRegs == 1) {
+  if (eMode == MB_REG_READ and usAddress == 101 and usNRegs == 1) {
     pucRegBuffer[0] = EEPROM.read(0);
     pucRegBuffer[1] = EEPROM.read(1);
     return MB_ENOERR;
   }
-  if (eMode == MB_REG_WRITE and usAddress == 100 and usNRegs == 1) {
+  if (eMode == MB_REG_WRITE and usAddress == 101 and usNRegs == 1) {
     if (0xfe >= pucRegBuffer[1] & 0xff >= 1 and (pucRegBuffer[0] >> 12) <= 3) {
       EEPROM.write(0, pucRegBuffer[0]);
       EEPROM.write(1, pucRegBuffer[1]);

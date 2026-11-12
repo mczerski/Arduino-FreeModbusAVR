@@ -22,7 +22,6 @@
 /* ----------------------- Modbus includes ----------------------------------*/
 #include "mb.h"
 #include "mbport.h"
-#include "led.h"
 
 /* ----------------------- Variables ----------------------------------------*/
 static eMBEventType eQueuedEvent;
@@ -39,12 +38,8 @@ xMBPortEventInit( void )
 BOOL
 xMBPortEventPost( eMBEventType eEvent )
 {
-    extern void trigger_led();
     xEventInQueue = TRUE;
     eQueuedEvent = eEvent;
-    if (eEvent == EV_FRAME_RECEIVED) {
-        trigger_led();
-    }
     return TRUE;
 }
 
