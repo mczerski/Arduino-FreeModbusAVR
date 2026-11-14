@@ -19,10 +19,10 @@ Serial: 9600 8E1
 Slave ID: 1
 
 To read current Modbus parameters read single holding register at address 100:
- - mbpoll /dev/ttyUSB0 -b 9600 -P even -a 1 -t4 -r 100
+ - mbpoll /dev/ttyUSB0 -b 9600 -0 -a 1 -t4 -r 100
 
 To change Modbus parameters write to holding register at address 100:
- - mbpoll /dev/ttyUSB0 -b 9600 -P even -a 1 -t4 -r 100 <value>
+ - mbpoll /dev/ttyUSB0 -b 9600 -0 -a 1 -t4 -r 100 <value>
 
 The content of the holding register 100 is as follows:
 13:12 - parity (0 - none, 1 - odd, 2 - even)
@@ -31,4 +31,4 @@ The content of the holding register 100 is as follows:
 7:0 - slave id
 
 e.g. to set parity none, baudrate 9600 and slave id 5:
- - mbpoll /dev/ttyUSB0 -b 9600 -P even -a 1 -t4 -r 100 517
+ - mbpoll /dev/ttyUSB0 -b 9600 -0 -a 1 -t4 -r 100 517
