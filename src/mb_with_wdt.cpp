@@ -9,7 +9,7 @@ BOOL resetMCU = FALSE;
 const USHORT MB_FILE_IMAGE = 1;
 const USHORT MB_FILE_HEADER = 2;
 MBFile fileTable[] = {
-    {.fileNumber = MB_FILE_IMAGE, .fileSize = 32*1024 - 10, .fileOffset = 10},
+    {.fileNumber = MB_FILE_IMAGE, .fileSize = 32*1024u - 10, .fileOffset = 10},
     {.fileNumber = MB_FILE_HEADER, .fileSize = 10, .fileOffset = 0},
     {.fileNumber = 0, .fileSize = 0, .fileOffset = 0}
 };
@@ -37,7 +37,7 @@ eMBErrorCode eMBInitWithWDT(
             ucSlaveAddress = 1;
         }
         ulBaudRate = baudrateTable[(config >> 8) & 0xf];
-        eParity = (config >> 12) & 0x3;
+        eParity = static_cast<eMBParity>((config >> 12) & 0x3);
     }
     init_led(led_pin);
     wdt_enable(ucWdtValue);
@@ -54,15 +54,16 @@ eMBErrorCode eMBInitWithWDT(
     status = eMBEnable();
     if (status != MB_ENOERR) error(status);
     trigger_led();
-    return;
+    return MB_ENOERR;
 }
 
 eMBErrorCode eMBPollWithWDT()
 {
     if (!resetMCU)
         wdt_reset();
-    eMBPoll();
+    eMBErrorCode status = eMBPoll();
     update_led();
+    return status;
 }
 
 __attribute__((weak)) void eMBBeforeFlashAccess() {}
@@ -113,7 +114,7 @@ eMBErrorCode eMBRegHoldingCB(UCHAR * pucRegBuffer, USHORT usAddress, USHORT usNR
     return MB_ENOERR;
   }
   if (eMode == MB_REG_WRITE and usAddress == 101 and usNRegs == 1) {
-    if (0xfe >= pucRegBuffer[1] & 0xff >= 1 and (pucRegBuffer[0] >> 12) <= 3) {
+    if (pucRegBuffer[1] >= 1 and pucRegBuffer[1] <= 0xfe and (pucRegBuffer[0] >> 4) < 3) {
       EEPROM.write(0, pucRegBuffer[0]);
       EEPROM.write(1, pucRegBuffer[1]);
       resetMCU = TRUE;

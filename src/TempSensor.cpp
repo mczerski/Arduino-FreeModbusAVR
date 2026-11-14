@@ -18,7 +18,7 @@ void TempSensor::update() {
   if (abs(temperature - temperature_) > 2) temperature_ = temperature;
 }
 
-uint16_t TempSensor::readTemp_()
+int16_t TempSensor::readTemp_()
 {
   // Configure ADC for reading temperature sensor
   ADMUX |= (1 << REFS0) | (1 << REFS1) | (1 << MUX3);
@@ -31,7 +31,7 @@ uint16_t TempSensor::readTemp_()
   while (ADCSRA & (1 << ADSC));
 
   // Read the temperature
-  return round((ADCW - temp_offset_ ) / temp_gain_);
+  return lround((int16_t(ADCW) - temp_offset_) / temp_gain_);
 }
 
 int16_t TempSensor::getTemp()
@@ -42,7 +42,7 @@ int16_t TempSensor::getTemp()
 void TempSensor::calibrate(int temp_offset, float temp_gain)
 {
   temp_offset_ = temp_offset == -1 ? 245 : temp_offset;
-  temp_gain_  = isnan(temp_gain) ? 1.0 : temp_gain;
+  temp_gain_  = isnan(temp_gain) or temp_gain == 0 ? 1.0 : temp_gain;
 }
 
 } // mys_toolkit

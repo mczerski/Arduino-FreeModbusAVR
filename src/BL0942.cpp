@@ -48,35 +48,34 @@ EnergyStore::EnergyStore(int eeprom_addr)
 }
 
 uint32_t EnergyStore::update(uint32_t cf_cnt) {
-  // cf_cnt is actuallly 24 bit long
+  cf_cnt &= CF_CNT_MASK;
   if (not init_done_) {
     // initialize eeprom stored cf_cnt (happens after MCU restart)
-    eeprom_get_range(eeprom_addr_, 24, base_cf_cnt_stored_);
+    eeprom_get_range(eeprom_addr_, 24, total_cf_cnt_);
     // if cf_cnt is not stored in eeprom initialize it with 0
-    if (base_cf_cnt_stored_ == 0xffffffff) {
-      base_cf_cnt_stored_ = 0;
-      eeprom_init_range(eeprom_addr_, 24, base_cf_cnt_stored_);
+    if (total_cf_cnt_ == 0xffffffff) {
+      total_cf_cnt_ = 0;
+      eeprom_init_range(eeprom_addr_, 24, total_cf_cnt_);
     }
-    // initialize received cf_cnt base with first received value (happens after MCU restart)
-    base_cf_cnt_received_ = cf_cnt;
+    last_cf_cnt_ = cf_cnt;
+    last_store_timestamp_ = Duration();
     init_done_ = true;
   }
-  // handle cf_cnt rollover or BL0942 restart (not likely to happen)
-  if (base_cf_cnt_received_ > cf_cnt) {
-    base_cf_cnt_stored_ = base_cf_cnt_stored_ + base_cf_cnt_received_ + cf_cnt;
-    base_cf_cnt_received_ = cf_cnt;
-    eeprom_put_range(eeprom_addr_, 24, base_cf_cnt_stored_);
-    last_store_timestamp_ = Duration();
+  // modular difference covers both normal counting and the 24-bit rollover
+  uint32_t delta = (cf_cnt - last_cf_cnt_) & CF_CNT_MASK;
+  if (delta > MAX_CF_CNT_STEP) {
+    // BL0942 restarted and counts from 0 again, otherwise an implausible value
+    // (corrupted packet that passed the checksum): take it as the new base without adding energy
+    delta = cf_cnt <= MAX_CF_CNT_STEP ? cf_cnt : 0;
   }
-  uint32_t updated_cf_cnt = cf_cnt - base_cf_cnt_received_ + base_cf_cnt_stored_;
+  last_cf_cnt_ = cf_cnt;
+  total_cf_cnt_ += delta;
   // store cf_cnt once every hour
   if (Duration() >= last_store_timestamp_ + Duration(60 * 60 * 1000ul)) {
-    eeprom_put_range(eeprom_addr_, 24, updated_cf_cnt);
-    base_cf_cnt_stored_ = updated_cf_cnt;
-    base_cf_cnt_received_ = cf_cnt;
+    eeprom_put_range(eeprom_addr_, 24, total_cf_cnt_);
     last_store_timestamp_ = Duration();
   }
-  return updated_cf_cnt;
+  return total_cf_cnt_;
 }
 
 void EnergyStore::set(uint32_t cf_cnt) {
@@ -152,12 +151,22 @@ void BL0942::begin() {
     readCmd_(FULL_PACKET);
 }
 
+byte BL0942::responseSize_() const {
+  return last_read_cmd_ == FULL_PACKET ? sizeof(packet_buffer_) + 1 : sizeof(reg_buffer_);
+}
+
 void BL0942::suspend() {
   // BL0942 communicats with 4800 bauds, that gives around 2ms per one byte
-  // so 5ms silence means the BL0942 stopped transmitting
   static const Duration silence_threshold{5};
   serial_.flush();
   if (last_read_timestamp_.get()) {
+    // A read command is pending. The BL0942 does not start answering immediately after
+    // the command, so a few ms of silence right after sending it does not mean it is done -
+    // it may start driving the shared MISO line in the middle of the flash access.
+    // Wait for the whole response (or the read timeout) first...
+    Duration deadline = last_read_timestamp_ + Duration(READ_TIMEOUT_MS);
+    while (serial_.available() < responseSize_() and Duration() < deadline) {}
+    // ...then for 5ms silence, in case it sends more than expected
     int available = serial_.available();
     Duration last_activity;
     while (Duration() < last_activity + silence_threshold) {
@@ -195,10 +204,9 @@ bool BL0942::update() {
     }
     return false;
   }
-  byte bytes_to_read = last_read_cmd_ == FULL_PACKET ? sizeof(packet_buffer_) + 1 : sizeof(reg_buffer_);
-  if (serial_.available() <  bytes_to_read) {
+  if (serial_.available() < responseSize_()) {
     // chek for timoute
-    if (Duration() >= last_read_timestamp_ + Duration(100)) {
+    if (Duration() >= last_read_timestamp_ + Duration(READ_TIMEOUT_MS)) {
       last_read_timestamp_ = Duration(0);
       while (serial_.available()) {serial_.read();}
     }
@@ -275,8 +283,8 @@ byte BL0942::getCfOutput() const {
 }
 
 void BL0942::calibrate(float i_gain, float v_gain) {
-  i_gain_ = isnan(i_gain) ? 1.0 : i_gain;
-  v_gain_ = isnan(v_gain) ? 1.0 : v_gain;
+  i_gain_ = isnan(i_gain) or i_gain == 0 ? 1.0 : i_gain;
+  v_gain_ = isnan(v_gain) or v_gain == 0 ? 1.0 : v_gain;
 }
 
 void BL0942::set_energy(uint32_t e_mW) {

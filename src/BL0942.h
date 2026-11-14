@@ -24,8 +24,13 @@ struct DataReg {
 } __attribute__((packed)) __attribute__((scalar_storage_order("little-endian")));
 
 class EnergyStore {
-  uint32_t base_cf_cnt_stored_ = 0;
-  uint32_t base_cf_cnt_received_ = 0;
+  // cf_cnt is actuallly 24 bit long
+  static constexpr uint32_t CF_CNT_MASK = 0xFFFFFFul;
+  // largest plausible cf_cnt step between two readings
+  // 60 s * 16 A * 240 V = 64 Wh = ~342 counts (~0.187 Wh per count), rounded up with margin
+  static constexpr uint32_t MAX_CF_CNT_STEP = 512;
+  uint32_t total_cf_cnt_ = 0;
+  uint32_t last_cf_cnt_ = 0;
   int eeprom_addr_;
   bool init_done_ = false;
   mys_toolkit::Duration last_store_timestamp_;
@@ -44,6 +49,7 @@ class BL0942 {
   static constexpr byte OT_FUNX  = 0x18;
   static constexpr byte SOFT_RESET = 0x1C;
   static constexpr byte USR_WRPROT = 0x1D;
+  static constexpr unsigned long READ_TIMEOUT_MS = 100;
   static constexpr double V_REF = 1.218;
   static constexpr double I_R = 0.001;
   static constexpr double I_COEFF = V_REF / 305978 / I_R;
@@ -70,6 +76,7 @@ class BL0942 {
   bool readPacket_();
   bool readReg_(byte reg);
   void readCmd_(byte reg);
+  byte responseSize_() const;
   byte calcChecksum_(byte reg, const byte* buffer, size_t size) const;
   void writeReg_(byte address, uint32_t data);
 public:
